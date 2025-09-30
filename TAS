@@ -1,0 +1,967 @@
+---
+title: "Pengaruh Penggunaan Internet dan Modal Sosial terhadap Kesejahteraan Sosial Masyarakat Indonesia : Analisis Data *World Values Survey* Gelombang 7"
+author: "Abdurrahman Ilham Ramadhan"
+editor: visual
+format:
+  docx:
+    reference-doc: word-template.docx
+bibliography: skripsi_ref.bib
+crossref:
+  fig-prefix: Gambar
+  fig-title: Gambar
+  tbl-prefix: Tabel
+  tbl-title: Tabel
+toc: false
+---
+
+BAB 4
+
+Hasil dan Pembahasan
+
+Bab ini menyajikan hasil penelitian dan pembahasan mendalam mengenai pengaruh penggunaan internet dan modal sosial terhadap kesejahteraan sosial masyarakat Indonesia. Sesuai dengan kerangka metodologi kuantitatif yang telah ditetapkan sebelumnya, hasil penelitian ini diperoleh melalui analisis terhadap data sekunder World Values Survey (WVS) Gelombang 7.
+
+Pembahasan pada bab ini, memuat dari analisis deskriptif yang memberikan gambaran umum karakteristik responden dan distribusi variabel-variabel penelitian. Selanjutnya, akan dipaparkan tahapan-tahapan analisis data yang telah dilakukan secara bertahap, mulai dari uji asumsi klasik, perbaikan model, analisis korelasi, hingga pengujian model regresi untuk menguji hipotesis penelitian.
+
+Penelitian ini diharapkan memberikan pengetahuan terbaru untuk memahami hubungan antara penggunaan internet, modal sosial, dan kesejahteraan sosial masyarakat. Pembahasan akan menganalisis makna teoretis dan praktis dari temuan penelitian berdasarkan hasil analisis data WVS Gelombang 7.
+
+A. Analisis Statistik Deskriptif
+
+Analisis statistik deskriptif pada penelitian ini digunakan untuk mendeskripsikan secara komprehensif dari indikator profil karakteristik responden, tingkat kesejahteraan, pola penggunaan internet, dan dimensi modal sosial berdasarkan data WVS Gelombang 7. Analisis deskriptif ini bertujuan untuk memahami struktur dan karakteristik data sebelum melakukan pengujian hipotesis yang lebih kompleks.
+
+Analisis profil responden akan dimulai dengan karakteristik demografis yang mencakup jenis kelamin, usia, tempat tinggal, dan tingkat pendidikan. Selanjutnya, variabel kesejahteraan sosial akan dianalisis melalui distribusi tingkat kebahagiaan, kondisi kesehatan, kebebasan memilih, kepuasan hidup, dan kondisi keuangan responden. Pola penggunaan internet akan dianalisis berdasarkan penggunaan e-mail, penggunaan internet, dan penggunaan media sosial responden. Terakhir, analisis mencakup dimensi modal sosial yang diukur melalui kepercayaan terhadap orang lain, kepercayaan terhadap kelompok, kepercayaan terhadap institusi, dan keterlibatan dalam organisasi sosial.
+
+Hasil analisis deskriptif ini akan menjadi dasar untuk memahami konteks dan karakteristik data yang akan dianalisis lebih lanjut, sekaligus memberikan gambaran awal mengenai sampel populasi yang diteliti dalam WVS Gelombang 7.
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Library Chunk
+library(tidyverse)
+library(Hmisc)
+library(psych)
+library(here)
+library(flextable)
+library(officer)
+library(viridis)
+library(MASS)
+library(lmtest)
+library(car)
+library(sjPlot)
+library(broom)
+library(knitr)
+library(ggplot2)
+library(gt)
+library(gtsummary)
+library(sandwich)
+library(patchwork)
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Data WVS
+wvsidn <- read.csv("F00013133-WVS_Wave_7_Indonesia_Csv_v5.0.csv", sep = ";", dec = ".")
+
+1. Analisis Statistik Deskriptif Profil Data Responden
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Data Respondent
+respondent_data <- wvsidn |>
+  dplyr::select(Q260, Q262, X003R, H_URBRURAL, Q275) |>
+  mutate(
+    gender = dplyr::recode(Q260, `1` = "Laki-laki", `2` = "Perempuan"),
+    age = Q262,
+    age_group = dplyr::recode(X003R,
+                           `1` = "18-24", `2` = "25-34", `3` = "35-44",
+                           `4` = "45-54", `5` = ">55", `6` = ">55"),
+    living_area = dplyr::recode(H_URBRURAL,
+                                    `1` = "Perkotaan", `2` = "Pedesaan"),
+    education = dplyr::recode(Q275,
+                        `0` = "Tidak sekolah/TK", `1` = "SD", `2` = "SMP",
+                        `3` = "SMA", `5` = "Perguruan Tinggi", 
+                        `6` = "Perguruan Tinggi", `7` = "Perguruan Tinggi", 
+                        `8` = "Perguruan Tinggi")
+  ) |>
+  mutate(education = factor(education,
+                             levels = c("Tidak sekolah/TK","SD","SMP","SMA",
+                                        "Perguruan Tinggi")),
+  ) |>
+  dplyr::select(gender, age, age_group, living_area, education) |>
+  drop_na()
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Table Respondent
+respondent_table <- bind_rows(
+  respondent_data |> 
+    count(Kategori = gender) |> 
+    mutate(Indikator = "Jenis Kelamin"),
+  respondent_data |> 
+    count(Kategori = age_group) |> 
+    mutate(Indikator = "Kelompok Usia"),
+  respondent_data |> 
+    count(Kategori = living_area) |> 
+    mutate(Indikator = "Wilayah Tinggal"),
+  respondent_data |> 
+    count(Kategori = education) |> 
+    mutate(Indikator = "Pendidikan Terakhir")
+) |> 
+  filter(!is.na(Kategori)) |> 
+  rename(Jumlah = n) |> 
+  group_by(Indikator) |> 
+  mutate(Persen = round(Jumlah / sum(Jumlah) * 100, 1)) |> 
+  ungroup() |> 
+  mutate(
+    Indikator = ifelse(duplicated(Indikator), "", Indikator)
+) |> 
+  dplyr::select(Indikator, Kategori, Jumlah, Persen)
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Distribusi Data Responden"
+#| label: tbl-1
+
+# Tabel Deskriptif Data Responden
+ft_respondent <- flextable(respondent_table) |> 
+  set_header_labels(
+    Indikator = "Indikator", 
+    Kategori = "Kategori", 
+    Jumlah = "Jumlah", 
+    Persen = "Persen (%)"
+  ) |>
+  set_table_properties(layout = "autofit", width = 0.95) 
+
+ft_respondent
+
+Berdasarkan data pada @tbl-1, mayoritas responden merupakan perempuan (54,9%) dan tinggal di wilayah pedesaan (74,1%). Selanjutnya, distribusi kelompok usia menunjukkan proporsi yang hampir seimbang antara kelompok 25-34 tahun (25,5%) dan 35-44 tahun (25,6%). Dilihat dari pendidikan terakhir, mayoritas responden berpendidikan hingga Sekolah Menengah Atas (SMA) dengan persentase sebesar (33,4%). Data ini memberikan gambaran umum karakteristik responden survei WVS di Indonesia yang digunakan sebagai data analisis dalam penelitian ini.
+
+2. Analisis Statistik Deskriptif Data Kesejahteraan Sosial
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Dataset Wellbeing
+wellbeing <- wvsidn |>
+  dplyr::select(
+    level_of_happiness = Q46,
+    health_status = Q47,
+    freedom_of_choice = Q48,
+    life_satisfaction = Q49,
+    household_financial_satisfaction = Q50
+  ) |>
+  mutate(across(everything(), ~ na_if(.x, -1))) |>
+  mutate(across(everything(), ~ na_if(.x, -2))) |>
+  mutate(across(everything(), ~ na_if(.x, -5))) |>
+  mutate(
+    level_of_happiness = dplyr::recode(level_of_happiness, 
+      `1` = 4, `2` = 3, `3` = 2, `4` = 1, .default = NA_real_),
+    health_status = dplyr::recode(health_status,
+      `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1, .default = NA_real_)
+  ) 
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Table Wellbeing
+wellbeing_table <- wellbeing |> 
+  pivot_longer(cols = everything(), 
+               names_to = "Indikator", 
+               values_to = "Nilai") |>
+  filter(!is.na(Nilai)) |>
+  mutate(
+    Indikator = factor(Indikator, levels = c(
+      "level_of_happiness", "health_status",
+      "freedom_of_choice", "life_satisfaction", 
+      "household_financial_satisfaction"
+    )),
+    Label = dplyr::recode(Indikator,
+      "level_of_happiness" = "Tingkat Kebahagiaan",
+      "health_status" = "Status Kesehatan Subjektif",
+      "freedom_of_choice" = "Kebebasan Memilih",
+      "life_satisfaction" = "Kepuasan Hidup",
+      "household_financial_satisfaction" = "Kepuasan Finansial Rumah Tangga"
+    ),
+    Variabel = "Kesejahteraan Subjektif"
+  ) |>
+  group_by(Variabel, Label) |>
+  summarise(
+    Mean = round(mean(Nilai), 2),
+    SD = round(sd(Nilai), 2),
+    Min = min(Nilai),
+    Max = max(Nilai),
+    .groups = "drop"
+  ) |> arrange(desc(Mean))
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Statistik Deskriptif Kesejahteraan Sosial Responden"
+#| label: tbl-2
+
+# Flextable Wellbeing
+ft_wellbeing <- flextable(wellbeing_table) |>
+  set_header_labels(
+    Variabel = "Variabel", 
+    Label = "Indikator", 
+    Mean = "Mean", 
+    SD = "SD", 
+    Min = "Min", 
+    Max = "Max"
+  ) |>
+  merge_v(j = "Variabel") |>
+  set_table_properties(layout = "autofit", width = 0.95)
+
+ft_wellbeing
+
+Berdasarkan @tbl-2 yang menyajikan indikator-indikator kesejahteraan sosial, terlihat variasi yang cukup signifikan antar indikator yang diukur. Indikator kebebasan memilih menunjukkan skor rata-rata tertinggi, yang diartikan bahwa responden merasa memiliki kebebasan yang tinggi dalam membuat keputusan di hidup mereka. Sebaliknya, indikator tingkat kebahagiaan mencatat skor rata-rata terendah, menunjukkan kondisi emosional yang kurang bahagia. Temuan ini mengungkap fenomena paradoks bahwa meskipun responden merasakan kebebasan dalam menentukan arah hidup mereka, hal itu tidak berkorelasi dengan tingkat kebahagiaan yang tinggi.
+
+3. Analisis Statistik Deskriptif Data Penggunaan Internet
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Dataset Internet
+internet <- wvsidn |>
+  dplyr::select(
+    email_use = Q205,
+    internet_use = Q206,
+    socialmedia_use = Q207
+  ) |>
+  mutate(across(everything(), ~ na_if(.x, -1))) |>
+  mutate(across(everything(), ~ na_if(.x, -2))) |>
+  mutate(across(everything(), ~ na_if(.x, -5))) |>
+  mutate(across(everything(), ~ dplyr::recode(
+    .x, `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1, .default = NA_real_))
+) 
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Table Internet
+internet_table <- internet|>
+  pivot_longer(cols = everything(), 
+               names_to = "Indikator", 
+               values_to = "Nilai") |>
+  filter(!is.na(Nilai)) |>
+  mutate(
+    Indikator = factor(Indikator, levels = c(
+      "email_use", "internet_use","socialmedia_use"
+    )),
+    Label = dplyr::recode(Indikator,
+      "email_use" = "Tingkat Penggunaan E-mail",
+      "internet_use" = "Tingkat Penggunaan Internet",
+      "socialmedia_use" = "Tingkat Penggunaan Sosial Media"
+    ),
+    Variabel = "Penggunaan Internet"
+  ) |>
+  group_by(Variabel, Label) |>
+  summarise(
+    Mean = round(mean(Nilai), 2),
+    SD = round(sd(Nilai), 2),
+    Min = min(Nilai),
+    Max = max(Nilai),
+    .groups = "drop"
+  ) |> arrange(desc(Mean))
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Statistik Deskriptif Penggunaan Internet Responden"
+#| label: tbl-3
+
+# Flextable Internet
+ft_internet <- flextable(internet_table) |>
+  set_header_labels(
+    Variabel = "Variabel", 
+    Label = "Indikator", 
+    Mean = "Mean", 
+    SD = "SD", 
+    Min = "Min", 
+    Max = "Max"
+  ) |>
+  merge_v(j = "Variabel") |>
+  set_table_properties(layout = "autofit", width = 0.95)
+
+ft_internet
+
+@tbl-3 menyajikan variabel penggunaan internet dalam tiga indikator utama yaitu E-mail, penggunaan internet secara umum, dan media sosial. Data menunjukkan bahwa responden paling intensif menggunakan media sosial, diikuti penggunaan internet secara umum, dan paling rendah adalah penggunaan E-mail. Temuan ini menunjukkan bahwa responden cenderung lebih tertarik pada platform internet yang memungkinkan interaksi sosial dibandingkan komunikasi formal.
+
+4. Analisis Statistik Deskriptif Data Modal Sosial
+
+Dalam bagian ini, analisis statistik deskriptif data modal sosial akan disajikan melalui beberapa tabel terpisah, dimana setiap tabel menampilkan gabungan indikator yang membentuk satu variabel modal sosial. Penyajian terpisah ini bertujuan untuk memudahkan pembaca dalam memahami karakteristik dan distribusi data pada setiap variabel modal sosial secara lebih mendalam. Hal ini memungkinkan analisis yang lebih fokus dan detail terhadap masing-masing indikator modal sosial yang diteliti.
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Dataset Social Capital
+socialcapital <- wvsidn |>
+  dplyr::select(
+    trust_others = Q57, trust_family = Q58, trust_neighbors = Q59,
+    trust_wellknown = Q60, trust_firstmeet = Q61, trust_other_religion = Q62,
+    trust_differentcountry = Q63, trust_placeofworship = Q64,
+    trust_nationalarmy = Q65, trust_press = Q66, trust_tv = Q67,
+    trust_laborunion = Q68, trust_police = Q69, trust_court = Q70,
+    trust_government = Q71, trust_politicalparty = Q72, trust_parliament = Q73,
+    trust_civilservice = Q74, trust_university = Q75, trust_election = Q76,
+    trust_bigcompany = Q77, trust_bank = Q78, trust_environmentalorg = Q79,
+    trust_femaleorg = Q80, trust_charityorg = Q81, trust_asean = Q82,
+    trust_unitedunion = Q83, trust_imf = Q84, trust_icc = Q85, 
+    trust_nato = Q86, trust_worldbank = Q87, trust_who = Q88, trust_wto = Q89,
+    member_placeofworship = Q94, member_sports = Q95, member_art = Q96,
+    member_laborunion = Q97, member_politicalparty = Q98,
+    member_enviromentalorg = Q99, member_professionalorg = Q100,
+    member_charityorg = Q101, member_consumerorg = Q102, 
+    member_selfhelp = Q103, member_femaleorg = Q104, member_anotherorg = Q105
+  ) |>
+  mutate(across(everything(), ~ na_if(.x, -1)),
+         across(everything(), ~ na_if(.x, -2)),
+         across(everything(), ~ na_if(.x, -5)),
+         trust_others = dplyr::recode(
+           trust_others, `1` = 2, `2` = 1, .default = NA_real_),
+         across(trust_family:trust_wto, ~ dplyr::recode(
+                  .x, `1` = 4, `2` = 3, `3` = 2, `4` = 1, .default = NA_real_))
+  ) 
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Table Social Capital
+social_table <- socialcapital |>
+  pivot_longer(cols = everything(),
+               names_to = "Indikator",
+               values_to = "Nilai") |>
+  filter(!is.na(Nilai)) |>
+  mutate(
+    Variabel = case_when(
+      Indikator == "trust_others" ~ "Trust Other",
+      Indikator %in% c("trust_family", "trust_neighbors", "trust_wellknown",
+                       "trust_firstmeet", "trust_other_religion",
+                       "trust_differentcountry") ~ "Trust Group",
+      Indikator %in% c("trust_placeofworship", "trust_nationalarmy", 
+                       "trust_press","trust_tv", "trust_laborunion",
+                       "trust_police","trust_court", "trust_government",
+                       "trust_politicalparty", "trust_parliament", 
+                       "trust_civilservice", "trust_university", 
+                       "trust_election", "trust_bigcompany", "trust_bank", 
+                       "trust_environmentalorg", "trust_femaleorg", 
+                       "trust_charityorg", "trust_asean", "trust_unitedunion", 
+                       "trust_imf", "trust_icc", "trust_nato", 
+                       "trust_worldbank", "trust_who", "trust_wto") 
+                       ~ "Trust Institution",
+      Indikator %in% c("member_placeofworship", "member_sports", "member_art",
+                       "member_laborunion", "member_politicalparty",
+                       "member_enviromentalorg", "member_professionalorg",
+                       "member_charityorg", "member_consumerorg",
+                       "member_selfhelp", "member_femaleorg", 
+                       "member_anotherorg") ~ "Member Organization"),
+  Indikator = dplyr::recode(Indikator,
+    trust_others = "Kepercayaan terhadap Orang lain",
+    trust_family = "Kepercayaan terhadap Keluarga",
+    trust_neighbors = "Kepercayaan terhadap Tetangga",
+    trust_wellknown = "Kepercayaan terhadap Orang-orang yang kenal secara langsung",
+    trust_firstmeet = "Kepercayaan terhadap  Orang-orang yang baru pertama kali      bertemu",
+    trust_other_religion = "Kepercayaan terhadap Orang yang berbeda agama",
+    trust_differentcountry = "Kepercayaan terhadap Orang yang berbeda kebangsaan",
+    trust_placeofworship = "Kepercayaan terhadap Tempat Ibadah",
+    trust_nationalarmy = "Kepercayaan terhadap Tentara Nasional Indonesia",
+    trust_press = "Kepercayaan terhadap Pers",
+    trust_tv = "Kepercayaan terhadap Televisi",
+    trust_laborunion = "Kepercayaan terhadap Serikat Buruh",
+    trust_police = "Kepercayaan terhadap Polisi",
+    trust_court = "Kepercayaan terhadap Pengadilan",
+    trust_government = "Kepercayaan terhadap Pemerintah Pusat",
+    trust_politicalparty = "Kepercayaan terhadap Partai Politik",
+    trust_parliament = "Kepercayaan terhadap Parlemen",
+    trust_civilservice = "Kepercayaan terhadap ASN",
+    trust_university = "Kepercayaan terhadap Universitas",
+    trust_election = "Kepercayaan terhadap Pemilu",
+    trust_bigcompany = "Kepercayaan terhadap Perusahaan Besar",
+    trust_bank = "Kepercayaan terhadap Bank",
+    trust_environmentalorg = "Kepercayaan terhadap Organisasi Lingkungan Hidup",
+    trust_femaleorg = "Kepercayaan terhadap Organisasi Perempuan",
+    trust_charityorg = "Kepercayaan terhadap Organisasi Kemanusiaan",
+    trust_asean = "Kepercayaan terhadap ASEAN",
+    trust_unitedunion = "Kepercayaan terhadap PBB",
+    trust_imf = "Kepercayaan terhadap Lembaga Keuangan Internasional",
+    trust_icc = "Kepercayaan terhadap  Pengadilan Kriminal International",
+    trust_nato = "Kepercayaan terhadap NATO",
+    trust_worldbank = "Kepercayaan terhadap Bank Dunia",
+    trust_who = "Kepercayaan terhadap WHO",
+    trust_wto = "Kepercayaan terhadap WTO",
+    member_placeofworship = "Keikutsertaan Organisasi Tempat Ibadah",
+    member_sports = "Keikutsertaan Organisasi Olahraga",
+    member_art = "Keikutsertaan Organisasi Seni",
+    member_laborunion = "Keikutsertaan Organisasi Serikat Buruh",
+    member_politicalparty = "Keikutsertaan Organisasi Partai Politik",
+    member_enviromentalorg = "Keikutsertaan Organisasi Lingkungan Hidup",
+    member_professionalorg = "Keikutsertaan Organisasi Profesi",
+    member_charityorg = "Keikutsertaan Organisasi Kemanusiaan",
+    member_consumerorg = "Keikutsertaan Organisasi Konsumen",
+    member_selfhelp = "Keikutsertaan Organisasi Swabantu",
+    member_femaleorg = "Keikutsertaan Kelompok Perempuan",
+    member_anotherorg = "Keikutsertaan Organisasi Lainnya")
+  ) |>
+  group_by(Variabel, Indikator) |>
+  summarise(
+    Mean = round(mean(Nilai), 2),
+    SD = round(sd(Nilai), 2),
+    Min = min(Nilai),
+    Max = max(Nilai),
+    .groups = "drop"
+  )
+
+a. Variabel Kepercayaan terhadap Orang Lain
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Statistik Deskriptif Variabel Kepercayaan terhadap Orang Lain"
+#| label: tbl-4
+
+# Table Trust Other
+social_trustother <- social_table |>  
+  filter(Variabel == "Trust Other") |>
+  arrange(desc(Mean))
+
+# Flextable Trust Other 
+ft_trustother <- flextable(social_trustother |> 
+  dplyr::select(-Variabel)) |>
+  set_header_labels(
+    Indikator = "Indikator", 
+    Mean = "Mean", 
+    SD = "SD", 
+    Min = "Min", 
+    Max = "Max"
+  ) |>
+  set_table_properties(layout = "autofit", width = 0.95)
+
+ft_trustother
+
+@tbl-4 menunjukkan indikator kepercayaan terhadap orang lain memiliki nilai rata-rata yang mengindikasikan bahwa mayoritas responden memiliki kecenderungan untuk berhati-hati dalam memberikan kepercayaan kepada orang lain yang tidak mereka kenal. Temuan ini menunjukkan bahwa responden cenderung selektif dalam membangun kepercayaan dengan orang lain.
+
+b. Variabel Kepercayaan dengan Kelompok
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Statistik Deskriptif Variabel Kepercayaan terhadap Kelompok"
+#| label: tbl-5
+
+# Table Trust Group 
+social_trustgroup <- social_table |> 
+  filter(Variabel == "Trust Group") |> 
+  arrange(desc(Mean))
+
+# Flextable Trust Group
+ft_trustgroup <- flextable(social_trustgroup |> 
+  dplyr::select(-Variabel)) |>
+  set_header_labels(
+    Indikator = "Indikator",  
+    Mean = "Mean", 
+    SD = "SD", 
+    Min = "Min", 
+    Max = "Max"
+  ) |>
+  set_table_properties(layout = "autofit", width = 0.95)
+
+ft_trustgroup
+
+@tbl-5 menunjukkan variasi tingkat kepercayaan responden terhadap berbagai kelompok.Responden menunjukkan kepercayaan tertinggi kepada keluarga, sementara mereka menempatkan kepercayaan terendah pada orang yang baru pertama kali bertemu. Hal ini mengindikasikan bahwa responden cenderung lebih mudah mempercayai pihak yang memiliki kedekatan sosial dan emosional. Temuan ini mengindikasikan bahwa modal sosial dalam bentuk kepercayaan lebih kuat terbentuk pada lingkaran terdekat (bonding social capital) dibandingkan dengan lingkaran sosial yang lebih luas (bridging social capital).
+
+c. Variabel Kepercayaan dengan Institusi
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Statistik Deskriptif Variabel Kepercayaan terhadap Institusi"
+#| label: tbl-6
+
+# Table Trust Institution
+social_trustinst <- social_table |> 
+  filter(Variabel == "Trust Institution") |> 
+  arrange(desc(Mean))
+
+# Flextable Trust Institution 
+ft_trustinst <- flextable(social_trustinst |> 
+  dplyr::select(-Variabel)) |>
+  set_header_labels(
+    Indikator = "Indikator",
+    Mean = "Mean", 
+    SD = "SD", 
+    Min = "Min", 
+    Max = "Max"
+  ) |>
+  set_table_properties(layout = "autofit", width = 0.95)
+
+ft_trustinst
+
+Berdasarkan @tbl-6, tingkat kepercayaan responden terhadap berbagai institusi terlihat secara jelas. Institusi tempat ibadah memperoleh tingkat kepercayaan tertinggi, sedangkan partai politik mencatat tingkat kepercayaan terendah. Perbedaan ini menunjukkan bahwa responden lebih mempercayai institusi yang religius dibandingkan dengan institusi politik. Hasil ini menunjukkan bahwa modal sosial dalam bentuk kepercayaan institusional lebih kuat terbentuk pada lembaga keagamaan dibandingkan dengan lembaga politik pada masyarakat Indonesia.
+
+d. Variabel keanggotaan organisasi
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Statistik Deskriptif Variabel Keanggotaan Organisasi"
+#| label: tbl-7
+
+# Table Member Organization 
+social_memberorg <- social_table |> 
+  filter(Variabel == "Member Organization") |> 
+  arrange(desc(Mean))
+
+# Flextable Member Organization 
+ft_memberorg <- flextable(social_memberorg |> 
+  dplyr::select(-Variabel)) |>
+  set_header_labels(
+    Indikator = "Indikator", 
+    Mean = "Mean", 
+    SD = "SD", 
+    Min = "Min", 
+    Max = "Max"
+  ) |>
+  set_table_properties(layout = "autofit", width = 0.95)
+
+ft_memberorg
+
+@tbl-7 menunjukkan keanggotaan responden dalam berbagai organisasi. Keanggotaan tertinggi terdapat pada organisasi tempat ibadah, sementara keanggotaan terendah pada partai politik, organisasi lainnya dan organisasi konsumen. Perbedaan ini menunjukkan bahwa responden lebih tertarik untuk bergabung dalam organisasi yang bersifat religius dibandingkan dengan organisasi politik atau ekonomi. Temuan ini mengindikasikan bahwa modal sosial masyarakat Indonesia lebih banyak terbentuk melalui jaringan keagamaan dibandingkan politik dan ekonomi.
+
+B. Estimasi OLS
+
+Untuk menganalisis pengaruh Penggunaan Internet dan Modal Sosial terhadap Kesejahteraan Sosial, penelitian ini menerapkan model regresi linear berganda yang diestimasi melalui metode Ordinary Least Squares (OLS). Pendekatan ini dipilih untuk mengukur arah, besaran, dan signifikansi statistik dari setiap variabel independen dengan cara mencari koefisien regresi yang mampu meminimalkan jumlah kuadrat residual (selisih antara data observasi aktual dan nilai yang diprediksi model).
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+# Wellbeing Score
+wellbeing_score <- wvsidn |> 
+  dplyr::select(Q46, Q47, Q48, Q49, Q50) |> 
+  mutate(across(everything(), ~ na_if(.x, -1)),
+         across(everything(), ~ na_if(.x, -2)),
+         across(everything(), ~ na_if(.x, -5)),
+         Q46 = dplyr::recode(Q46, `1`=4, `2`=3, `3`=2, `4`=1),
+         Q47 = dplyr::recode(Q47, `1`=5, `2`=4, `3`=3, `4`=2, `5`=1)) |> 
+  mutate(across(Q46:Q50, as.numeric)) |> 
+  mutate(wellbeing = rowMeans(across(Q46:Q50), na.rm = TRUE)) |> 
+  pull(wellbeing)
+
+# Internet Score
+internet_score <- wvsidn |> 
+  dplyr::select(Q205, Q206, Q207) |> 
+  mutate(across(everything(), ~ na_if(.x, -1)),
+         across(everything(), ~ na_if(.x, -2)),
+         across(everything(), ~ na_if(.x, -5)),
+         across(everything(), ~ dplyr::recode(.x, `1`=5, `2`=4, `3`=3, `4`=2, `5`=1))
+         ) |> 
+  mutate(across(Q205:Q207, as.numeric)) |> 
+  mutate(internet = rowMeans(across(Q205:Q207), na.rm = TRUE)) |> 
+  pull(internet)
+
+# Social Capital Score
+socialcapital_score <- wvsidn |> 
+  dplyr::select(Q57:Q89, Q94:Q105) |> 
+  mutate(across(everything(), ~ na_if(.x, -1)),
+         across(everything(), ~ na_if(.x, -2)),
+         across(everything(), ~ na_if(.x, -5)),
+         across(everything(), as.numeric)) |> 
+  mutate(across(Q57:Q89, ~ case_when(
+    .x == 1 ~ 4,
+    .x == 2 ~ 3,
+    .x == 3 ~ 2,
+    .x == 4 ~ 1,
+    TRUE ~ NA_real_
+  ))) |> 
+  rowwise() |> 
+  mutate(socialcapital = mean(c_across(c(Q57:Q89, Q94:Q105)), na.rm = TRUE)
+  ) |> 
+  ungroup() |> 
+  pull(socialcapital)
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Estimasi OLS"
+#| label: tbl-8
+
+# Research Dataframe
+research_df <- data.frame(wellbeing = wellbeing_score,
+                  internet = internet_score,
+                  socialcapital = socialcapital_score
+                  ) |> drop_na()
+test_model <- lm(wellbeing ~ internet + socialcapital, data = research_df)
+
+ft_test <- as_flextable(test_model)
+ft_test <- set_caption(ft_test, "Estimasi Ordinary Least Squares")
+
+ft_test
+
+Hasil @tbl-8 menunjukkan estimasi pengaruh penggunaan internet dan modal sosial terhadap kesejahteraan sosial. Analisis ini menghasilkan koefisien positif sebesar 0.123 untuk variabel penggunaan internet dan koefisien positif sebesar 0.405 untuk variabel modal sosial. Kedua variabel ini terbukti memiliki pengaruh yang sangat signifikan (p < 0.001), yang berarti peningkatan pada kedua variabel tersebut dapat memprediksi peningkatan kesejahteraan sosial.
+
+Dapat disimpulkan, model regresi ini signifikan secara statistik, terlihat dari nilai F-statistik sebesar 58.7. Meskipun demikian, model ini hanya menjelaskan sekitar 3.7% dari total variasi dalam kesejahteraan sosial berdasarkan nilai Adjusted R-squared. Untuk memastikan validitas dan reliabilitas hasil estimasi, model ini selanjutnya akan melewati serangkaian uji asumsi klasik sebelum interpretasi akhir dilakukan.
+
+C. Uji Asumsi Klasik
+
+Pada bagian ini, akan membahas pengujian asumsi klasik yang memvalidasi model regresi OLS. Pengujian ini merupakan langkah penting untuk memastikan bahwa hasil estimasi koefisien yang diperoleh tidak bias dan konsisten. Analisis diagnostik yang akan dibahas mencakup Uji Normalitas, Uji Multikolinearitas, Uji Heteroskedastisitas, dan Uji Autokorelasi.
+
+1. Uji Normalitas Awal
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| fig-cap: "Q-Q test"
+#| label: fig-1
+#| fig-cap-location: top
+#| fig-dpi: 300
+
+test_normality <- resid(test_model)
+par(mfrow = c(1, 1))
+qqnorm(test_normality, main = "Q-Q Plot")
+qqline(test_normality, col = "red", lwd = 2)
+
+@fig-1 menyajikan uji Q-Q Plot yang menyatakan bahwa distribusi residual pada model regresi secara umum mengikuti pola distribusi normal, namun terdapat deviasi kecil pada bagian ekor distribusi. Berdasarkan Central Limit Theorem (CLT), dengan ukuran sampel yang cukup besar maka distribusi rata-rata sampel akan mendekati distribusi normal tanpa bergantung pada bentuk distribusi populasi asalnya (@kwak2017central). Dengan begitu, penyimpangan kecil pada ekor distribusi residual tidak menyalahi asumsi normalitas, sehingga penggunaan model regresi linier dengan uji parametrik dalam penelitian ini tetap dapat dipertanggungjawabkan secara statistik.
+
+2. Uji Multikolinearitas
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| fig-cap: "Multicollinearity test"
+#| label: fig-2
+#| fig-cap-location: top
+#| fig-dpi: 300
+
+test_vif <- car::vif(test_model)
+test_vif_df <- data.frame(variable = names(test_vif),
+                          vif = test_vif)
+ggplot(test_vif_df, aes(x = variable, y = vif)) + 
+  geom_bar(stat = "identity", fill = "gold", width = 0.5) +
+  geom_hline(yintercept = 5, color = "red", linetype = "dashed") +
+  labs(x = "Variabel", y = "Nilai VIF") +
+  theme_minimal()
+
+Variabel modal sosial dan penggunaan internet masing-masing memiliki nilai Variance Inflation Factor (VIF) sebesar 1, seperti yang tersaji pada @fig-2. Nilai tersebut berada jauh di bawah ambang batas umum (VIF < 5) yang menjadikan tidak ada masalah multikolinearitas antarvariabel independen dalam model regresi.
+
+3. Uji Heteroskedastisitas
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "BP test"
+#| label: tbl-9
+
+bp_result <- bptest(test_model)
+  
+ft_bp <- as_flextable(bp_result)
+ft_bp <- set_caption(ft_bp, "Hasil Uji Breusch Pagan")
+
+ft_bp
+
+Hasil uji Breusch-Pagan pada @tbl-9 menunjukkan nilai statistik sebesar 78,8 (df=2) dengan p-value < 0,001. Karena nilai p-value ini lebih kecil dari tingkat signifikansi 0,05, analisis ini menyimpulkan adanya masalah heteroskedastisitas dalam model regresi. Temuan ini mengindikasikan perlunya penyesuaian untuk memperoleh estimasi parameter yang lebih reliabel.
+
+4. Uji Autokorelasi.
+
+{r}
+#| label: tbl-10
+#| echo: false
+#| warning: false
+#| output: true
+#| tbl-cap: Autocorrelation Test
+
+cor_result <- dwtest(test_model, alternative = "two.sided")
+
+ft_cor <- as_flextable(cor_result)
+ft_cor <- set_caption(ft_cor, "Hasil uji Autokorelasi Durbin–Watson")
+
+ft_cor
+
+Hasil uji Durbin-Watson pada @tbl-10 menunjukkan nilai DW sebesar 1,9 dengan p-value 0,0143. Meskipun nilai DW mendekati angka 2 (yang mengindikasikan autokorelasi lemah), p-value yang lebih kecil dari 0,05 menunjukkan bahwa terdapat autokorelasi yang signifikan secara statistik pada model regresi. Dengan demikian, dapat disimpulkan bahwa model regresi mengandung masalah autokorelasi, namun tingkatnya relatif lemah.
+
+Hasil uji asumsi klasik menunjukkan bahwa model regresi mengandung masalah heteroskedastisitas dan autokorelasi pada residual. Pelanggaran asumsi ini dapat menyebabkan estimasi OLS menjadi tidak efisien dan menghasilkan standard error yang bias. Untuk mengatasi permasalahan tersebut, penelitian ini menggunakan metode Heteroskedasticity and Autocorrelation Consistent (HAC) yang dapat menghasilkan estimasi yang konsisten meskipun asumsi heteroskedastisitas dan autokorelasi tidak terpenuhi.
+
+D. Perbaikan Model yang Melanggar Uji Asumsi Klasik
+
+Penelitian ini menerapkan Heteroskedasticity and Autocorrelation Consistent (HAC) dikarenakan hasil uji asumsi klasik menunjukkan adanya pelanggaran asumsi heteroskedastisitas serta indikasi autokorelasi pada residual. Untuk mengatasi masalah ini, analisis menerapkan koreksi standard error menggunakan estimator (HAC) dari Newey-West. Metode ini menghasilkan standard error yang robust, sehingga memastikan uji hipotesis tetap valid dan kesimpulan penelitian dapat diandalkan.
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "NeweyWest Test"
+#| label: tbl-11
+
+nw_cov <- NeweyWest(test_model)
+nw_test <- coeftest(test_model, vcov = nw_cov, df = Inf)
+nw_df <- as.data.frame.matrix(nw_test)
+colnames(nw_df) <- c("Koefisien", "Std.Error", "z_value", "p_value")
+
+nw_df <- nw_df |> 
+  rownames_to_column("Variabel")  |> 
+  mutate(
+    Sig = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ ""
+    )
+  )
+
+ft_nw <- flextable(nw_df) |> 
+  colformat_double(digits = 3) |> 
+  autofit() |> 
+  set_caption("Hasil Uji Z dengan Standard Error Newey-West")
+
+ft_nw
+
+@tbl-11 menampilkan hasil estimasi regresi linear dengan koreksi Newey-West HAC untuk mengatasi masalah heteroskedastisitas dan autokorelasi yang terdeteksi sebelumnya. Model ini mengestimasi pengaruh akses internet dan modal sosial terhadap kesejahteraan sosial menggunakan standard error yang robust. Hasil estimasi menunjukkan bahwa kedua variabel independen berpengaruh positif dan sangat signifikan terhadap kesejahteraan sosial. Koefisien internet sebesar 0,1234 dengan z-value 7,74 (p < 0,001) yang mengindikasikan setiap peningkatan satu unit skor akses internet meningkatkan kesejahteraan sosial sebesar 0,123 unit. Sementara itu, koefisien modal sosial sebesar 0,405 dengan z-value 4,88 (p < 0,001) menunjukkan bahwa setiap kenaikan satu unit modal sosial meningkatkan wellbeing sebesar 0,405 unit.
+
+Perbandingan diatas menunjukkan bahwa modal sosial memiliki efek yang lebih besar dibandingkan akses internet dalam mempengaruhi kesejahteraan sosial. Temuan ini mengindikasikan bahwa meskipun teknologi internet memberikan kontribusi positif terhadap kesejahteraan sosial, kualitas hubungan sosial dan kepercayaan interpersonal tetap menjadi faktor yang lebih dominan.
+
+E. Uji Pengaruh Modal Sosial terhadap Kesejahteraan Sosial
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: FALSE
+
+independent_df <- research_df |>
+  mutate(
+    internet_c = as.numeric(scale(internet, center = TRUE, scale = TRUE)),      
+    social_c   = as.numeric(scale(socialcapital, center = TRUE, scale = TRUE))
+  )
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Data Independent Social Capital"
+#| label: tbl-12
+
+social_model <- lm(wellbeing ~ social_c, data = independent_df)
+
+tbl_regression(social_model, intercept = TRUE) |>
+  as_flex_table()
+
+Pada @tbl-12 menyajikan modal sosial berpengaruh positif dan signifikan terhadap kesejahteraan sosial. Nilai koefisien regresi sebesar 0,14 dengan CI 95% antara 0,10 hingga 0,19 serta (p < 0,001). Dapat diartikan, setiap peningkatan satu satuan modal sosial berkaitan dengan kenaikan kesejahteraan subjektif sebesar 0,14 poin. Oleh karena itu, semakin tinggi modal sosial yang dimiliki responden, maka tingkat kesejahteraan yang mereka rasakan juga cenderung semakin meningkat.
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "NeweyWest Model Independent"
+#| label: tbl-13
+
+s_cov <- NeweyWest(social_model)
+sw_test <- coeftest(social_model, vcov = s_cov, df = Inf)
+sw_df <- as.data.frame.matrix(sw_test)
+colnames(sw_df) <- c("Koefisien", "Std.Error", "z_value", "p_value")
+
+sw_df <- sw_df |> 
+  rownames_to_column("Variabel")  |> 
+  mutate(
+    Sig = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ ""
+    )
+  )
+
+ft_sw <- flextable(sw_df) |> 
+  colformat_double(digits = 3) |> 
+  autofit() |> 
+  set_caption("Hasil Uji Variabel Independen dengan Standard Error Newey-West")
+
+ft_sw
+
+Hasil estimasi model parsial pada @tbl-13 menunjukkan bahwa modal sosial berpengaruh positif dan sangat signifikan terhadap kesejahteraan sosial (β = 0,144; z = 4,98; p < 0,001). Model ini menghasilkan koefisien modal sosial yang lebih rendah dibandingkan model lengkap (penurunan dari 0,405 menjadi 0,144), yang mengindikasikan bahwa sebagian pengaruh modal sosial dimediasi atau berinteraksi dengan variabel akses internet. Perbedaan koefisien ini menegaskan pentingnya mempertimbangkan kedua variabel secara simultan dalam memahami penentu kesejahteraan sosial.
+
+F. Plot Modal Sosial dan Penggunaan Internet
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| fig-cap: "Plot Modal Sosial"
+#| label: fig-4
+#| fig-cap-location: top
+#| fig-dpi: 300
+
+plot(independent_df$social_c, independent_df$wellbeing,
+     xlab = "Modal Sosial", 
+     ylab = "Kesejahteraan Sosial",
+     pch = 19)
+abline(social_model, col = "red", lwd = 3) 
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| fig-cap: "Plot Penggunaan Internet"
+#| label: fig-5
+#| fig-cap-location: top
+#| fig-dpi: 150
+
+plot(independent_df$internet_c, independent_df$wellbeing,
+     xlab = "Penggunaan Internet", 
+     ylab = "Kesejahteraan Sosial",
+     pch = 19) 
+abline(social_model, col = "red", lwd = 3) 
+
+Jika membandingkan antara kedua plot, terlihat perbedaan kekuatan pengaruh antara modal sosial dan penggunaan internet terhadap kesejahteraan subjektif. Pada @fig-4, garis regresi menunjukkan kemiringan positif yang cukup jelas, menandakan adanya hubungan yang signifikan antara modal sosial dan kesejahteraan sosial. Artinya, semakin tinggi tingkat kepercayaan dan relasi sosial yang dimiliki responden, semakin besar pula tingkat kesejahteraan yang mereka rasakan.
+
+Sebaliknya, pada @fig-5, garis regresi terlihat hampir mendatar, menunjukkan bahwa penggunaan internet tidak memberikan pengaruh berarti terhadap kesejahteraan sosial. Bahkan, kontribusinya jauh lebih lemah dibandingkan modal sosial. Hal ini mengindikasikan bahwa faktor sosial lebih dominan dalam menjelaskan kesejahteraan dibandingkan dengan faktor penggunaan teknologi.
+
+G. Moderasi Modal Sosial dan Penggunaan Internet
+
+1. Uji Regresi Modal Sosial dan Internet
+
+{r}
+#| echo: false
+#| warning: false
+#| output: true
+#| label: fig-6
+#| fig-cap-location: top
+#| fig-dpi: 300
+
+# Internet
+p1 <- ggplot(research_df, aes(x = internet)) +
+  geom_histogram(bins = 30, fill = "gold", color = "white") +
+  labs(title = "Internet (Asli)")
+
+p2 <- ggplot(independent_df, aes(x = internet_c)) +
+  geom_histogram(bins = 30, fill = "gold", color = "white") +
+  labs(title = "Internet (Standardisasi)")
+
+# Social Capital
+p3 <- ggplot(research_df, aes(x = socialcapital)) +
+  geom_histogram(bins = 30, fill = "gold", color = "white") +
+  labs(title = "Modal Sosial (Asli)")
+
+p4 <- ggplot(independent_df, aes(x = social_c)) +
+  geom_histogram(bins = 30, fill = "gold", color = "white") +
+  labs(title = "Modal Sosial (Standardisasi)")
+
+# Full Figure
+(p1 | p2) / (p3 | p4)
+
+@fig-6 membandingkan distribusi variabel internet dan modal sosial sebelum dan sesudah standardisasi (sd). Distribusi internet asli menunjukkan konsentrasi ekstrem pada satu nilai dengan frekuensi sangat tinggi, sementara nilai lainnya tersebar tidak merata. Kemudian, standardisasi mengubah skala variabel, namun pola konsentrasi tinggi tetap dipertahankan. Sementara itu, distribusi modal sosial asli menunjukkan pola normal, dan mempertahankan bentuk normal setelah standardisasi. Standardisasi memastikan kedua variabel memiliki skala sebanding dalam analisis regresi, sehingga koefisien dapat diinterpretasikan secara konsisten.
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Hasil Regresi Modal Sosial dan Internet"
+#| label: tbl-14
+
+model_socialinternet <- lm(wellbeing ~ social_c * internet_c, data = independent_df)
+
+tbl_regression(model_socialinternet, intercept = TRUE) |>
+  as_flex_table()
+
+Ketika diuji dengan menggunakan regresi, @tbl-14 menunjukkan bahwa modal sosial dan penggunaan internet berpengaruh positif serta signifikan terhadap kesejahteraan sosial, bahkan internet memiliki pengaruh sedikit lebih besar dibandingkan modal sosial. Walaupun interaksi antara keduanya memberikan koefisien positif, namun belum signifikan secara statistik (p = 0,052), sehingga peran internet sebagai moderator masih bersifat lemah. Berdasarkan temuan ini, mengungkapkan bahwa baik modal sosial maupun penggunaan internet berkontribusi penting dalam meningkatkan kesejahteraan sosial dan integrasi keduanya berpotensi memperkuat efek tersebut meskipun belum terbukti secara meyakinkan.
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| tbl-cap: "Hasil Regresi Robust Modal Sosial dan Internet"
+#| label: tbl-15
+
+full_cov <- NeweyWest(model_socialinternet)
+full_test <- coeftest(model_socialinternet, vcov = full_cov, df = Inf)
+full_df <- as.data.frame.matrix(full_test)
+colnames(full_df) <- c("Koefisien", "Std.Error", "z_value", "p_value")
+
+full_df <- full_df |> 
+  rownames_to_column("Variabel")  |> 
+  mutate(
+    Sig = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ ""
+    )
+  )
+
+ft_full <- flextable(full_df) |> 
+  colformat_double(digits = 3) |> 
+  autofit() |> 
+  set_caption("Hasil Uji Moderasi menggunakan Standard Error Newey-West")
+
+ft_full
+
+@tbl-15 menunjukkan bahwa modal sosial (β = 0,142; p < 0,001) dan internet (β = 0,186; p < 0,001) berpengaruh positif dan signifikan terhadap kesejahteraan sosial. Hasil interaksi sebesar 0,043 (z = 1,82; p = 0,069) berada sedikit di atas ambang signifikansi konvensional, sehingga memberikan indikasi lemah adanya efek moderasi namun belum cukup kuat untuk kesimpulan definitif. Temuan ini mengindikasikan bahwa kedua variabel cenderung berkontribusi secara independen terhadap kesejahteraan.
+
+2. Plot Efek Interaksi Modal Sosial dan Internet
+
+{r}
+#| warning: FALSE
+#| echo: FALSE
+#| output: TRUE
+#| message: FALSE
+#| fig-cap: "Efek Interaksi Modal Sosial\npada Penggunaan Internet terhadap Wellbeing"
+#| label: fig-7
+#| fig-cap-location: top
+#| fig-dpi: 300
+
+moderasi_model <- plot_model(model_socialinternet, 
+                type = "int", 
+                terms = c("social_c", "internet_c",)) + 
+  scale_color_manual(values = c("red", "blue"),
+                     labels = c("Rendah", "Tinggi")) +
+  scale_fill_manual(values = c("red", "blue"),
+                    labels = c("Rendah", "Tinggi")) +
+  labs(title = "Prediksi nilai dari Kesejahteraan Sosial",
+       caption = "Peneliti, 2025",
+       x = "Modal Sosial",
+       y = "Kesejahteraan Sosial",
+       color = "Penggunaan Internet",
+       fill = "Penggunaan Internet") +
+  theme_minimal()
+
+moderasi_model
+
+ggsave("plot_moderasi.png", plot = moderasi_model, width = 5, height = 3)
+
+@fig-7 memvisualisasikan pola interaksi antara modal sosial dan penggunaan internet dalam mempengaruhi kesejahteraan sosial melalui nilai prediksi kesejahteraan Sosial. Grafik ini menampilkan dua garis dengan kemiringan berbeda yang merepresentasikan kelompok dengan penggunaan internet tinggi (garis biru) dan rendah (garis merah) dalam skala modal sosial. Pola visual yang paling menonjol adalah bagaimana kedua garis bergerak dari posisi hampir di mulai pada titik yang sama (modal sosial rendah) menjadi semakin melebar di sisi kanan grafik (modal sosial tinggi). Bayangan warna di sekitar masing-masing garis menunjukkan CI yang mengindikasikan tingkat kepastian estimasi pada berbagai level modal sosial.
+
+Perbandingan antara kedua garis mengungkapkan pola yang berbeda pada level modal sosial yang berbeda. Pada individu dengan modal sosial rendah, kedua kelompok menunjukkan tingkat kesejahteraan sosial yang hampir identik, terlepas dari intensitas penggunaan internet mereka. Kedua garis yang berdekatan ini mengindikasikan bahwa teknologi digital tidak memberikan kontribusi signifikan terhadap kesejahteraan tanpa fondasi relasi sosial yang memadai. Sebaliknya, pada individu dengan modal sosial tinggi, perbedaan antara kedua kelompok menjadi substansial. Kelompok dengan penggunaan internet tinggi mencapai kesejahteraan sosial sekitar 7,0, sementara kelompok dengan penggunaan internet rendah hanya mencapai sekitar 6,0 yang memiliki selisih 1,0 poin yang cukup besar. Perbedaan jarak ini menunjukkan bahwa internet memperkuat efek positif modal sosial, dan manfaat teknologi digital meningkat seiring dengan meningkatnya kualitas relasi sosial seseorang.
+
+Pola interaksi yang tervisualisasi dalam grafik ini menegaskan bahwa internet berfungsi sebagai pelengkap dari modal sosial dibandingkan pengganti. Teknologi digital memaksimalkan dampak positifnya hanya ketika relasi sosial yang berkualitas telah terbangun terlebih dahulu. Temuan ini menunjukkan bahwa upaya meningkatkan kesejahteraan sosial tidak dapat mengandalkan teknologi digital semata, melainkan memerlukan fondasi modal sosial yang kuat berupa kepercayaan, jaringan sosial, dan kualitas interaksi interpersonal yang memadai.
+
