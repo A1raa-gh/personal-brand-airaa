@@ -1,0 +1,110 @@
+---
+format: 
+  revealjs:
+    css: styles.css
+    center: false
+    logo: logo_uny.png
+    size
+editor: visual
+---
+
+::: {.center}
+## Pengaruh Penggunaan Internet Dan Modal Sosial Terhadap Kesejahteraan Sosial Masyarakat Indonesia Analisis Data *World Values Survey* Gelombang 7
+
+Abdurrahman Ilham Ramadhan
+
+NIM 21413244016
+:::
+
+
+## Latar Belakang
+
+::: small-slide
+-   Hasil Survei Penetrasi Internet Indonesia menunjukkan bahwa tingkat penetrasi internet mencapai 79,5% dari total populasi, meningkat dari 78,19% pada tahun sebelumnya
+-   Namun, meski akses terhadap internet semakin luas, peningkatan konektivitas digital tidak secara otomatis berdampak pada peningkatan kualitas hidup masyarakat
+-   Menurut Saputri (2020), kesejahteraan sosial tidak hanya ditentukan oleh faktor ekonomi atau pemenuhan kebutuhan dasar, tetapi juga oleh kemampuan individu untuk mengakses dan memanfaatkan jaringan sosial serta teknologi digital secara aktif dan setara
+-   Kesejahteraan sosial dipengaruhi oleh berbagai faktor, termasuk akses informasi dan keterhubungan sosial.
+-   Belum banyak penelitian di Indonesia yang mengkaji pengaruh penggunaan internet dan modal sosial terhadap kesejahteraan sosial secara bersamaan
+-   Menurut Putnam (2000), penggunaan internet memiliki potensi ganda terhadap modal sosial yaitu sebagai sarana penguatan *bridging* namun juga sebagai faktor yang dapat melemahkan *bonding* jika tidak digunakan secara bijak
+:::
+
+
+## Rumusan Masalah
+
+::: small-slide
+1.  Apakah penggunaan internet memiliki pengaruh terhadap kesejahteraan sosial masyarakat Indonesia?
+2.  Apakah modal sosial memiliki pengaruh terhadap kesejahteraan sosial masyarakat Indonesia?
+3.  Apakah terdapat pengaruh simultan antara penggunaan internet dan modal sosial terhadap kesejahteraan sosial masyarakat Indonesia?
+:::
+
+
+## Metode Penelitian
+
+::: small-slide
+-   Jenis penelitian : Kuantitatif (Analisis data sekunder dari WVS 2018)
+-   Sampel : Responden Indonesia sebanyak 3200 (n = 3195)
+-   Analisis data : Regresi linear dan uji moderasi
+-   Perangkat lunak : Rstudio
+-   Variabel : Kesejahteraan sosial (Dependen), Pengunaan internet (Independen), Modal Sosial (Independen)
+:::
+
+::: {.center}
+# Hasil Penelitian
+:::
+
+## Hasil Regresi
+::: {.panel-tabset}
+
+### Penggunaan Internet
+
+![](regresi_int.png){width="80%"} 
+::: {.callout-note}
+
+### Interpretasi
+
+Koefisien sebesar 0,192 mengindikasikan bahwa setiap peningkatan satu satuan penggunaan internet berkaitan dengan kenaikan kesejahteraan sosial sebesar 0,192 poin. 
+
+:::
+
+### Modal Sosial
+
+![](regresi_soc.png){width="80%"} 
+
+Koefisien 0,144 mengindikasikan setiap peningkatan satu satuan modal
+sosial berkaitan dengan kenaikan kesejahteraan sosial sebesar 0,144
+poin
+
+### Penggunaan Internet & Modal Sosial
+
+![](regresi_mod.png){width="80%"} 
+
+Menunjukkan modal sosial (β = 0,142; p < 0,001) dan internet (β = 0,186; p < 0,001) berpengaruh positif dan signifikan terhadap kesejahteraan sosial. Hasil interaksi senilai 0,043 (z = 1,82; p = 0,069) berada sedikit di atas ambang signifikansi
+
+:::
+
+## Uji Moderasi
+:::: {.columns}
+
+::: {.column width="60%"}
+![](plot_moderasi.png){width="100%"}
+:::
+
+::: {.column width="40%"}
+
+::: {.callout-tip title="Makna Plot"}
+Pada tingkat modal sosial tinggi, kelompok dengan penggunaan internet tinggi memiliki prediksi kesejahteraan sosial yang lebih besar dibandingkan kelompok
+dengan penggunaan internet rendah.
+:::
+:::
+::::
+
+## Pembahasan
+
+
+
+## Kesimpulan
+
+
+::: {.center}
+# Terima kasih
+::: 
