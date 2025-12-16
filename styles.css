@@ -1,0 +1,20 @@
+.reveal h2 {
+  font-size: 32px !important;
+}
+.small-text {
+  font-size: 22px;
+  line-height: 1.3;
+}
+.reveal p,
+.reveal li {
+  font-size: 28px !important;
+  line-height: 1.35;
+}
+.small-slide p,
+.small-slide li {
+  font-size: 22px !important;
+  line-height: 1.25;
+}
+.reveal section {
+  padding-top: 40px !important;
+}
